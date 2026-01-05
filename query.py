@@ -12,7 +12,7 @@ def connect_to_db():
 def insert_user(user_id, username):
     conn ,cursor = connect_to_db()
 
-    cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (%s, %s)", (user_id, username))
+    cursor.execute("INSERT INTO users (user_id, username) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING", (user_id, username))
 
     conn.commit()
     conn.close()
