@@ -21,6 +21,33 @@ def create_tables():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS services (
+        service_id SERIAL PRIMARY KEY,
+        name TEXT,
+        admin_id TEXT
+    )
+    """)
+
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS slots (
+        slot_id SERIAL PRIMARY KEY,
+        service_id INTEGER,
+        date TEXT,
+        time TEXT,
+        status TEXT DEFAULT 'available'
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS appointments (
+        appointment_id SERIAL PRIMARY KEY,
+        user_id TEXT,
+        slot_id INTEGER
+    )
+    """)
+
     conn.commit()
     conn.close()
 

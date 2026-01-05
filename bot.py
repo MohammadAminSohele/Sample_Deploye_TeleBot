@@ -37,108 +37,113 @@ def start_cdm(message):
 
     bot.send_message(chat_id,f'Welcome to our bot {user_name} \n please choose an option',reply_markup=MarkUp)
 
-
-# user_answers = {}
-
-
-# # Start command
-# @bot.message_handler(commands=['start'])
-# def send_welcome(message):
-#     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-#     markup.add("Add Question", "Take Quiz", "My Results")
-
-#     bot.send_message(message.chat.id, "Welcome to Quiz Bot!", reply_markup=markup)
-    
-
-
-# # Handle main menu
-# @bot.message_handler(func=lambda msg: msg.text in ["Add Question", "Take Quiz", "My Results"])
-# def menu_handler(message):
-#     if message.text == "Add Question":
-#         bot.send_message(message.chat.id, "Send me the question in this format:\nQuestion | Option1 | Option2 | Option3 | Option4 | CorrectOptionNumber")
-#         bot.register_next_step_handler(message, add_question_handler)
-#     elif message.text == "Take Quiz":
-#         start_quiz(message)
-#     elif message.text == "My Results":
-#         scores = query.get_user_results(message.from_user.id)
-#         if scores:
-#             avg = sum(s[0] for s in scores) / len(scores)
-#             bot.send_message(message.chat.id, f"Your past scores: {[s[0] for s in scores]}\nAverage: {avg:.2f}")
-#         else:
-#             bot.send_message(message.chat.id, "No results found.")
-
-# # Add question
-
-# def add_question_handler(message):
-#     try:
-#         parts = message.text.split("|")
-#         if len(parts) != 6:
-#             raise ValueError
-#         question, o1, o2, o3, o4, correct = [p.strip() for p in parts]
-#         query.add_question(question, o1, o2, o3, o4, int(correct))
-#         bot.send_message(message.chat.id, "Question added successfully!")
-#     except Exception:
-#         bot.send_message(message.chat.id, "Invalid format. Try again.")
-
-# # Quiz handling
-
-# def start_quiz(message):
-#     questions = query.get_all_questions()
-#     if not questions:
-#         bot.send_message(message.chat.id, "No questions available.")
-#         return
-#     user_answers[message.from_user.id] = {"questions": questions, "current": 0, "score": 0}
-#     send_question(message.chat.id, message.from_user.id)
-
-# '''
-# user_answers{
-
-#             user_id:{
-#                        'questions': questions,
-#                        'current':1,
-#                        'score':1
-
-            
-#             }
-# }
-# '''
-
-
-# def send_question(chat_id, user_id):
-#     state = user_answers[user_id]
-#     if state["current"] < len(state["questions"]):
-#         q = state["questions"][state["current"]]
-#         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-#         markup.add("1", "2", "3", "4")
-#         bot.send_message(chat_id, f"Q: {q[1]}\n1) {q[2]}\n2) {q[3]}\n3) {q[4]}\n4) {q[5]}", reply_markup=markup)
-
-#         bot.register_next_step_handler_by_chat_id(chat_id, check_answer)
-#     else:
-#         finish_quiz(chat_id, user_id)
-
-# def check_answer(message):
-#     user_id = message.from_user.id
-#     state = user_answers[user_id]
-#     q = state["questions"][state["current"]]
-#     try:
-#         if int(message.text) == q[6]:
-#             state["score"] += 1
-#     except:
-#         pass
-#     state["current"] += 1
-#     send_question(message.chat.id, user_id)
-
-# def finish_quiz(chat_id, user_id):
-#     state = user_answers[user_id]
-#     score = state["score"]
-#     total = len(state["questions"])
-#     query.save_result(user_id, score)
-    
-#     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-#     markup.add("Add Question", "Take Quiz", "My Results")
-
-#     bot.send_message(chat_id, f"Quiz finished! Your score: {score}/{total}", reply_markup=markup)
-#     del user_answers[user_id]
+""" Service """
+@bot.message_handler(func=lambda message : message.text=='Available Servises')
+def choose_service(message):
+    services = query.get_services()
+    markup = types.InlineKeyboardMarkup()
+    for sid, name in services:
+        markup.add(types.InlineKeyboardButton(name, callback_data=f"service_{sid}"))
+    bot.send_message(message.chat.id, "Choose a service:", reply_markup=markup)
+""" Date """
+@bot.callback_query_handler(func=lambda call:call.data.startswith('service_'))
+def choose_date(call):
+    service_id = int(call.data.split("_")[1])    
+    user_state[call.from_user.id] = {'service_id':service_id}
+    dates = query.get_dates(service_id)
+    markup = types.InlineKeyboardMarkup()
+    for date in dates:
+        markup.add(types.InlineKeyboardButton(date,callback_data=f"date_{date}"))
+    bot.send_message(call.message.chat.id,'choose your date',reply_markup=markup)
+"""  """
+@bot.callback_query_handler(func=lambda call:call.data.startswith('date_'))
+def choose_time(call):
+    date = call.data.split('_')[1]
+    user_state[call.from_user.id]['date'] = date
+    service_id = user_state[call.from_user.id]['service_id']
+    times = query.get_times(service_id,date)
+    markup = types.InlineKeyboardMarkup()
+    for slot_id,time in times:
+        markup.add(types.InlineKeyboardButton(time,callback_data=f"time_{slot_id}"))
+    bot.send_message(call.message.chat.id,'choose your time',reply_markup=markup)
+""" confirm """
+@bot.callback_query_handler(func=lambda call:call.data.startswith('time_'))
+def confirm(call):
+    user_id = str(call.from_user.id)
+    slot_id = int(call.data.split('_')[1])
+    query.book_appointments(user_id,slot_id)
+    query.update_slots_status(slot_id)
+    bot.send_message(call.message.chat.id,'✅ Appoinments books and time reserved')
+    user_state.pop(call.from_user.id,None)
+""" show appointments """
+@bot.message_handler(func=lambda message:message.text=='My Appointments')
+def show_appointments(message):
+    user_id = str(message.from_user.id)
+    chat_id = message.chat.id
+    if user_id in admins:
+        appointments = query.get_admin_appointments(user_id)
+        if not appointments:
+            bot.send_message(chat_id,'📭 no appointments have been booked for yor service yet')
+            return
+        text = "📋 Appointments booked by users:\n\n"
+        for date,time,service,username in appointments:
+            text+=f"• {service} booked on {date} at {time} - booked by @{username}\n"
+        bot.send_message(chat_id,text)
+    else:
+        appointments=query.get_user_appointments(user_id)
+        if not appointments:
+            bot.send_message(chat_id,'you have no appointments yet')
+            return
+        text = "📅 your appointments:\n\n"
+        for date,time,service in appointments:
+            text+=f"• {service} on {date} at {time}\n"
+        bot.send_message(chat_id,text)
+""" ServiceName """
+@bot.message_handler(func=lambda m:m.text=='➕Add service')
+def ask_servic_name(message):
+    chat_id = message.chat.id
+    admin_id = str(message.from_user.id)
+    if admin_id not in admins:
+        bot.send_message(chat_id,'❌ you dont have permissionto add service')
+    user_state[admin_id]={'step':'service_name','dates':[],'slots':[]}
+    bot.send_message(chat_id,'📝 enter your service name:')
+""" Handle Admin Input """
+@bot.message_handler(func=lambda m:str(m.from_user.id) in user_state)
+def handle_admin_input(message):
+    chat_id = message.chat.id
+    admin_id = str(message.from_user.id)
+    admin_stage=user_state[admin_id]
+    step = admin_stage['step']
+    if step=='service_name':
+        admin_stage['service_name']=message.text.strip()
+        admin_stage['step']='add_date'
+        bot.send_message(chat_id,'📅 Enter a date (YYYY-MM-DD), or type "done" when finished:')
+    elif step=='add_date':
+        text = message.text.strip()
+        if text.lower()=='done':
+            if not admin_stage['dates']:
+                bot.send_message(chat_id,'⚠️ You must enter at least one date.')
+                return
+            admin_stage['date_index']=0
+            admin_stage['step']='add_time'
+            bot.send_message(chat_id,f'⏰ enter time for {admin_stage["dates"][0]} divide with (comma-seperate)')
+        else:
+            admin_stage['dates'].append(text)
+            bot.send_message(chat_id,'✅ date booked successfuly,add another date or type done')
+    elif step=='add_time':
+        times = [time.strip() for time in message.text.split('_') if time.strip()]
+        dates = admin_stage['dates'][admin_stage['date_index']]
+        admin_stage['slots'].append((dates,times))
+        admin_stage['date_index']+=1
+        if admin_stage['date_index'] < len(admin_stage['dates']):
+            next_date=admin_stage['dates'][admin_stage['date_index']]
+            bot.send_message(chat_id,f'⏰ enter time for {next_date}')
+        else:
+            service_id = query.insert_service(admin_stage['service_name'],admin_id)
+            for date,time in admin_stage['slots']:
+                query.insert_slots(service_id,date,time)
+            bot.send_message(chat_id,f'✅ Service {admin_stage["service_name"]} wiht {len(admin_stage["dates"])}')
+            user_state.pop(admin_id)
 
 @app.route(f"/{BOT_TOKEN}", methods=["POST"])
 def webhook():
