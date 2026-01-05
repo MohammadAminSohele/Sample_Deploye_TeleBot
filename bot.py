@@ -132,7 +132,7 @@ def handle_admin_input(message):
             bot.send_message(chat_id,'✅ date booked successfuly,add another date or type done')
     elif step=='add_time':
         times = [time.strip() for time in message.text.split('_') if time.strip()]
-        dates = admin_stage['dates'][admin_stage['date_index']]
+        dates = admin_stage["dates"][admin_stage["date_index"]]
         admin_stage['slots'].append((dates,times))
         admin_stage['date_index']+=1
         if admin_stage['date_index'] < len(admin_stage['dates']):
