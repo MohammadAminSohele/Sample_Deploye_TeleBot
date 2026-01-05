@@ -3,8 +3,6 @@ import query
 from dotenv import load_dotenv
 import os
 
-
-
 import flask
 from flask import request
 
@@ -29,7 +27,7 @@ def start_cdm(message):
     chat_id = message.chat.id
     user_id = str(message.from_user.id)
     user_name = message.from_user.username
-    # query.insert_user(user_id,user_name)
+    query.insert_user(user_id,user_name)
     
     MarkUp = types.ReplyKeyboardMarkup(resize_keyboard=True)
     MarkUp.row('Available Servises','My Appointments')
