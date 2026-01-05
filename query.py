@@ -10,7 +10,7 @@ def connect_to_db():
     return conn, cursor
 
 def insert_user(user_id, username):
-    conn ,cursor = connect()
+    conn ,cursor = connect_to_db()
 
     cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (%s, %s)", (user_id, username))
 
