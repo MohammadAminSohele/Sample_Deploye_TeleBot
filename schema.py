@@ -14,25 +14,12 @@ def create_tables():
     conn = psycopg2.connect(db_url)
     cur = conn.cursor()
 
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS questions (
-            id SERIAL PRIMARY KEY ,
-            question TEXT NOT NULL,
-            option1 TEXT NOT NULL,
-            option2 TEXT NOT NULL,
-            option3 TEXT NOT NULL,
-            option4 TEXT NOT NULL,
-            correct_option INTEGER NOT NULL
-        )
-    ''')
-
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS results (
-            id SERIAL PRIMARY KEY,
-            user_id BIGINT NOT NULL,
-            score INTEGER NOT NULL
-        )
-    ''')
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        username TEXT
+    )
+    """)
 
     conn.commit()
     conn.close()
